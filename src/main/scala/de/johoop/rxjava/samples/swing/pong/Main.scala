@@ -12,6 +12,8 @@ import rx.Observable
 import rx.operators.OperationCombineLatest._
 import java.util.{ Set => JSet }
 import scala.collection.JavaConverters._
+import java.util.concurrent.TimeUnit
+import rx.concurrency.SwingScheduler
 
 object Main extends SimpleSwingApplication {
   lazy val top = new MainFrame {
@@ -31,6 +33,8 @@ object Main extends SimpleSwingApplication {
   val rawInputs = Observable create combineLatest(size, keys, func2 { (size: Dimension, keys: JSet[Integer]) =>
     ((size.getWidth, size.getHeight), keys.asScala)
   })
+
+  val sampled = rawInputs.sample(1L, TimeUnit.SECONDS, SwingScheduler.getInstance)
   
-  val subRawInputs = rawInputs subscribe func1(println)
+  val subSampled = sampled subscribe func1(println)
 }
