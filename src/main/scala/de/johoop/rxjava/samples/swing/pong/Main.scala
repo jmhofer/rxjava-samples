@@ -8,6 +8,10 @@ import java.awt.Color
 import rx.observables.SwingObservable
 import de.johoop.rxjava.samples.swing.Predef._
 import java.awt.Dimension
+import rx.Observable
+import rx.operators.OperationCombineLatest._
+import java.util.{ Set => JSet }
+import scala.collection.JavaConverters._
 
 object Main extends SimpleSwingApplication {
   lazy val top = new MainFrame {
@@ -22,8 +26,11 @@ object Main extends SimpleSwingApplication {
   }
   
   val size = SwingObservable fromResizing canvas.peer
+  val keys = SwingObservable fromPressedKeys canvas.peer
   
-  val subSize = size subscribe toFunc1({ dim: Dimension =>
-    println(dim)
+  val rawInputs = Observable create combineLatest(size, keys, func2 { (size: Dimension, keys: JSet[Integer]) =>
+    ((size.getWidth, size.getHeight), keys.asScala)
   })
+  
+  val subRawInputs = rawInputs subscribe func1(println)
 }
