@@ -19,14 +19,16 @@ import java.awt.event.KeyEvent
 import scala.collection.breakOut
 import rx.util.functions.Func1
 
-case class Inputs(width: Double, height: Double, direction: Option[Direction])
+case class Inputs(direction: Option[Direction])
 
 sealed trait Direction
 case object Up extends Direction
 case object Down extends Direction
 
 object Main extends SimpleSwingApplication {
-  lazy val top = new MainFrame {
+  private var state: Inputs = Inputs(None) // TODO replace by observable
+  
+  override def top = new MainFrame {
     title = "Rx Pong"
     contents = canvas
   }
@@ -35,36 +37,41 @@ object Main extends SimpleSwingApplication {
     preferredSize = (800, 600)
     background = Color.white
     focusable = true
+    
+    override def paintComponent(graphics: Graphics2D): Unit = {
+      val clip = graphics.getClipBounds
+      val (x, y, width, height) = (clip.getX.toInt, clip.getY.toInt, clip.getWidth.toInt, clip.getHeight.toInt)
+      graphics clearRect (x, y, width, height)
+
+      graphics setColor Color.black
+      val str = state.direction map { dir => if (dir == Up) "up" else "down" } getOrElse "none"
+      graphics.drawString(str, 100, 100)
+    }
   }
 
-  val size = SwingObservable fromResizing canvas.peer
+  val keys = SwingObservable fromPressedKeys canvas.peer
   
-  val direction = SwingObservable fromPressedKeys canvas.peer map keySetToDirection
-  
-  val keySetToDirection = func1 { (keys: JSet[Integer]) =>
+  val direction = keys map func1 { (keys: JSet[Integer]) =>
     import KeyEvent._
     
-    val result: Set[Direction] = (for {
+    val set: Set[Direction] = (for {
       key <- keys.asScala if key == VK_UP || key == VK_DOWN
       direction = if (key == VK_UP) Up else Down
     } yield direction)(breakOut)
     
-    if (result.size == 1) Some(result.head) else None
-  }
-  
-  val inputs = Observable create combineLatest(size, direction, func2 { (size: Dimension, dir: Option[Direction]) =>
-    Inputs(size.getWidth, size.getHeight, dir)
-  })
-
-  val sampled = inputs.sample(1L, TimeUnit.SECONDS, SwingScheduler.getInstance)
-
-  val subSampled = sampled subscribe func1({ inputs: Inputs =>
-    val graphics = canvas.peer.getGraphics.asInstanceOf[Graphics2D]
+    val result: Option[Direction] = if (set.size == 1) Some(set.head) else None
     
-    graphics.clearRect(0, 0, inputs.width.toInt, inputs.height.toInt)
-    graphics setColor Color.black
-    val str = inputs.direction map { dir => if (dir == Up) "up" else "down" } getOrElse "none"
-    graphics.drawString(str, 100, 100)
-    // TODO canvas.paint(graphics)
+    result
+  }
+
+  val inputs = direction map func1 { (dir: Option[Direction]) =>
+    Inputs(dir)
+  }
+
+  val sampled = inputs sample (40L, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
+
+  sampled subscribe func1({ inputs: Inputs =>
+    state = inputs
+    canvas.repaint
   })
 }
