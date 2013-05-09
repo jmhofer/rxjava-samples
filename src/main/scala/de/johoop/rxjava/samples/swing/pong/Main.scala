@@ -18,15 +18,17 @@ import java.awt.Graphics2D
 import java.awt.event.KeyEvent
 import scala.collection.breakOut
 import rx.util.functions.Func1
+import java.awt.event.MouseEvent
+import rx.operators.OperationCombineLatest
 
-case class Inputs(direction: Option[Direction])
+case class Inputs(player1: Option[Direction], player2: Option[Direction])
 
 sealed trait Direction
 case object Up extends Direction
 case object Down extends Direction
 
 object Main extends SimpleSwingApplication {
-  private var state: Inputs = Inputs(None) // TODO replace by observable
+  private var state: Inputs = Inputs(None, None) // TODO replace by observable
   
   override def top = new MainFrame {
     title = "Rx Pong"
@@ -35,23 +37,28 @@ object Main extends SimpleSwingApplication {
   
   lazy val canvas = new Panel {
     preferredSize = (800, 600)
-    background = Color.white
     focusable = true
     
     override def paintComponent(graphics: Graphics2D): Unit = {
       val clip = graphics.getClipBounds
       val (x, y, width, height) = (clip.getX.toInt, clip.getY.toInt, clip.getWidth.toInt, clip.getHeight.toInt)
+      
+      graphics setBackground Color.white
       graphics clearRect (x, y, width, height)
 
       graphics setColor Color.black
-      val str = state.direction map { dir => if (dir == Up) "up" else "down" } getOrElse "none"
-      graphics.drawString(str, 100, 100)
+      val str1 = state.player1 map { dir => if (dir == Up) "up" else "down" } getOrElse "none"
+      graphics.drawString(str1, 100, 100)
+      
+      val str2 = state.player2 map { dir => if (dir == Up) "up" else "down" } getOrElse "none"
+      graphics.drawString(str2, 200, 100)
     }
   }
 
   val keys = SwingObservable fromPressedKeys canvas.peer
+  val mouse = SwingObservable fromMouseMotionEvents canvas.peer
   
-  val direction = keys map func1 { (keys: JSet[Integer]) =>
+  val player2Direction = keys map func1 { (keys: JSet[Integer]) =>
     import KeyEvent._
     
     val set: Set[Direction] = (for {
@@ -59,14 +66,15 @@ object Main extends SimpleSwingApplication {
       direction = if (key == VK_UP) Up else Down
     } yield direction)(breakOut)
     
-    val result: Option[Direction] = if (set.size == 1) Some(set.head) else None
-    
-    result
+    if (set.size == 1) Some(set.head) else None
   }
 
-  val inputs = direction map func1 { (dir: Option[Direction]) =>
-    Inputs(dir)
-  }
+  val player1Direction = mouse 
+      .map (func1((_: MouseEvent).getY))
+      .scan (func2((old: Int, current: Int) => current - old)) // FIXME too simple...
+      .map (func1[Int, Option[Direction]]((dy: Int) => if (dy < 0) Some(Up) else if (dy > 0) Some(Down) else None))
+  
+  val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs(_: Option[Direction], _: Option[Direction]) })
 
   val sampled = inputs sample (40L, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
 
