@@ -23,15 +23,16 @@ import rx.operators.OperationCombineLatest
 import java.awt.Point
 import rx.util.Timestamped
 
-case class Inputs(player1: Timestamped[Option[Direction]], player2: Option[Direction])
-case class State(player1: Option[Direction], player2: Option[Direction])
+case class Inputs(player1: Timestamped[Direction], player2: Direction)
+case class State(player1: Direction, player2: Direction)
 
 sealed trait Direction
 case object Up extends Direction
 case object Down extends Direction
+case object Resting extends Direction
 
 object Main extends SimpleSwingApplication {
-  private var state: State = State(None, None) // TODO add real Pong stuff to state
+  private var state: State = State(Resting, Resting) // TODO add real Pong stuff to state
   
   override def top = new MainFrame {
     title = "Rx Pong"
@@ -50,10 +51,10 @@ object Main extends SimpleSwingApplication {
       graphics clearRect (x, y, width, height)
 
       graphics setColor Color.black
-      val str1 = state.player1 map { dir => if (dir == Up) "up" else "down" } getOrElse "none"
+      val str1 = state.player1.toString
       graphics.drawString(str1, 100, 100)
       
-      val str2 = state.player2 map { dir => if (dir == Up) "up" else "down" } getOrElse "none"
+      val str2 = state.player2.toString
       graphics.drawString(str2, 200, 100)
     }
   }
@@ -69,20 +70,20 @@ object Main extends SimpleSwingApplication {
       direction = if (key == VK_UP) Up else Down
     } yield direction)(breakOut)
     
-    if (set.size == 1) Some(set.head) else None
+    if (set.size == 1) set.head else Resting
   }
 
   val player1Direction = mouse
-      .map (func1[Point, Int]((_: Point).getY.toInt))
-      .map (func1[Int, Option[Direction]]((dy: Int) => if (dy < 0) Some(Up) else if (dy > 0) Some(Down) else None))
+      .map (func1((_: Point).getY.toInt))
+      .map (func1[Int, Direction]((dy: Int) => if (dy < 0) Up else if (dy > 0) Down else Resting))
       .timestamp
   
-  val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs((_: Timestamped[Option[Direction]]), (_: Option[Direction]))})
+  val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs((_: Timestamped[Direction]), (_: Direction))})
 
   val sampled = inputs 
       .sample (40L, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
       .map (func1[Inputs, State] { (inputs: Inputs) =>
-        State(player1 = if (inputs.player1.getTimestampMillis < System.currentTimeMillis - 40L) None else inputs.player1.getValue,
+        State(player1 = if (inputs.player1.getTimestampMillis < System.currentTimeMillis - 40L) Resting else inputs.player1.getValue,
               player2 = inputs.player2)
       })
 
