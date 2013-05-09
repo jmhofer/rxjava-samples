@@ -23,10 +23,10 @@ import rx.operators.OperationCombineLatest
 import java.awt.Point
 import rx.util.Timestamped
 
-case class State(player1: Direction, player2: Direction)
+case class State(player1: Paddle, player2: Paddle)
 
 case class Inputs(player1: Timestamped[Direction], player2: Direction)
-case class Paddle(position: Double)
+case class Paddle(position: Double = 0.5)
 case class Ball(position: (Double, Double), velocity: (Double, Double))
 
 sealed trait Direction
@@ -35,6 +35,8 @@ case object Down extends Direction
 case object Resting extends Direction
 
 object Main extends SimpleSwingApplication {
+  val frameRateMillis = 40L
+  
   private var state: Option[State] = None
   
   override def top = new MainFrame {
@@ -56,11 +58,9 @@ object Main extends SimpleSwingApplication {
       state foreach { state => 
         graphics setColor Color.white
         
-        val str1 = state.player1.toString
-        graphics drawString (str1, 100, 100)
-        
-        val str2 = state.player2.toString
-        graphics drawString (str2, 200, 100)
+        for ((paddle, x) <- Seq((state.player1, x), (state.player2, x + width - 10))) {
+          graphics.fillRect(x, y + (paddle.position * height).toInt - 20, 10, 40)
+        } 
       }
     }
   }
@@ -87,14 +87,25 @@ object Main extends SimpleSwingApplication {
   val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs((_: Timestamped[Direction]), (_: Direction))})
 
   val sampled = inputs 
-      .sample (40L, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
-      .scan (State(Resting, Resting), func2[State, Inputs, State] { (oldState: State, inputs: Inputs) =>
-        State(player1 = if (inputs.player1.getTimestampMillis < System.currentTimeMillis - 40L) Resting else inputs.player1.getValue,
-              player2 = inputs.player2)
+      .sample (frameRateMillis, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
+      .scan (State(Paddle(), Paddle()), func2 { (oldState: State, inputs: Inputs) =>
+        val inputPlayer1 = if (inputs.player1.getTimestampMillis < System.currentTimeMillis - 40L) Resting else inputs.player1.getValue
+        State(
+            stepPaddle(frameRateMillis, oldState.player1, inputPlayer1),
+            stepPaddle(frameRateMillis, oldState.player2, inputs.player2))
       })
 
   sampled subscribe func1({ newState: State =>
     state = Some(newState)
     canvas.repaint
   })
+  
+  private def stepPaddle(stepMillis: Long, paddle: Paddle, direction: Direction): Paddle = {
+    val step = stepMillis.toDouble / 1000
+    direction match {
+      case Resting => paddle
+      case Up => Paddle(math.max(0.0, paddle.position - step))
+      case Down => Paddle(math.min(1.0, paddle.position + step))
+    }
+  }
 }
