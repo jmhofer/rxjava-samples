@@ -20,6 +20,7 @@ import scala.collection.breakOut
 import rx.util.functions.Func1
 import java.awt.event.MouseEvent
 import rx.operators.OperationCombineLatest
+import java.awt.Point
 
 case class Inputs(player1: Option[Direction], player2: Option[Direction])
 
@@ -56,7 +57,7 @@ object Main extends SimpleSwingApplication {
   }
 
   val keys = SwingObservable fromPressedKeys canvas.peer
-  val mouse = SwingObservable fromMouseMotionEvents canvas.peer
+  val mouse = SwingObservable fromRelativeMouseMotion canvas.peer
   
   val player2Direction = keys map func1 { (keys: JSet[Integer]) =>
     import KeyEvent._
@@ -69,9 +70,8 @@ object Main extends SimpleSwingApplication {
     if (set.size == 1) Some(set.head) else None
   }
 
-  val player1Direction = mouse 
-      .map (func1((_: MouseEvent).getY))
-      .scan (func2((old: Int, current: Int) => current - old)) // FIXME too simple...
+  val player1Direction = mouse
+      .map (func1[Point, Int]((_: Point).getY.toInt))
       .map (func1[Int, Option[Direction]]((dy: Int) => if (dy < 0) Some(Up) else if (dy > 0) Some(Down) else None))
   
   val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs(_: Option[Direction], _: Option[Direction]) })
