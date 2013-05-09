@@ -23,8 +23,11 @@ import rx.operators.OperationCombineLatest
 import java.awt.Point
 import rx.util.Timestamped
 
-case class Inputs(player1: Timestamped[Direction], player2: Direction)
 case class State(player1: Direction, player2: Direction)
+
+case class Inputs(player1: Timestamped[Direction], player2: Direction)
+case class Paddle(position: Double)
+case class Ball(position: (Double, Double), velocity: (Double, Double))
 
 sealed trait Direction
 case object Up extends Direction
@@ -32,7 +35,7 @@ case object Down extends Direction
 case object Resting extends Direction
 
 object Main extends SimpleSwingApplication {
-  private var state: State = State(Resting, Resting) // TODO add real Pong stuff to state
+  private var state: Option[State] = None
   
   override def top = new MainFrame {
     title = "Rx Pong"
@@ -47,15 +50,18 @@ object Main extends SimpleSwingApplication {
       val clip = graphics.getClipBounds
       val (x, y, width, height) = (clip.getX.toInt, clip.getY.toInt, clip.getWidth.toInt, clip.getHeight.toInt)
       
-      graphics setBackground Color.white
+      graphics setBackground Color.black
       graphics clearRect (x, y, width, height)
 
-      graphics setColor Color.black
-      val str1 = state.player1.toString
-      graphics.drawString(str1, 100, 100)
-      
-      val str2 = state.player2.toString
-      graphics.drawString(str2, 200, 100)
+      state foreach { state => 
+        graphics setColor Color.white
+        
+        val str1 = state.player1.toString
+        graphics drawString (str1, 100, 100)
+        
+        val str2 = state.player2.toString
+        graphics drawString (str2, 200, 100)
+      }
     }
   }
 
@@ -82,13 +88,13 @@ object Main extends SimpleSwingApplication {
 
   val sampled = inputs 
       .sample (40L, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
-      .map (func1[Inputs, State] { (inputs: Inputs) =>
+      .scan (State(Resting, Resting), func2[State, Inputs, State] { (oldState: State, inputs: Inputs) =>
         State(player1 = if (inputs.player1.getTimestampMillis < System.currentTimeMillis - 40L) Resting else inputs.player1.getValue,
               player2 = inputs.player2)
       })
 
   sampled subscribe func1({ newState: State =>
-    state = newState
+    state = Some(newState)
     canvas.repaint
   })
 }
