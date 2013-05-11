@@ -25,7 +25,7 @@ import rx.util.Timestamped
 
 case class State(player1: Paddle, player2: Paddle)
 
-case class Inputs(player1: Timestamped[Direction], player2: Direction)
+case class Inputs(player1: Direction, player2: Direction)
 case class Paddle(position: Double = 0.5)
 case class Ball(position: (Double, Double), velocity: (Double, Double))
 
@@ -65,33 +65,28 @@ object Main extends SimpleSwingApplication {
     }
   }
 
-  val keys = SwingObservable fromPressedKeys canvas.peer
+  val keys = SwingObservable fromPressedKeys canvas.peer publish
   val mouse = SwingObservable fromRelativeMouseMotion canvas.peer
   
-  val player2Direction = keys map func1 { (keys: JSet[Integer]) =>
-    import KeyEvent._
-    
+  val player1Direction = keys map func1 { (keys: JSet[Integer]) => keysToDirection(keys, KeyEvent.VK_W, KeyEvent.VK_S) }
+  val player2Direction = keys map func1 { (keys: JSet[Integer]) => keysToDirection(keys, KeyEvent.VK_UP, KeyEvent.VK_DOWN) }
+
+  def keysToDirection(keys: JSet[Integer], upKey: Int, downKey: Int): Direction = {
     val set: Set[Direction] = (for {
-      key <- keys.asScala if key == VK_UP || key == VK_DOWN
-      direction = if (key == VK_UP) Up else Down
+      key <- keys.asScala if key == upKey || key == downKey
+      direction = if (key == upKey) Up else Down
     } yield direction)(breakOut)
     
     if (set.size == 1) set.head else Resting
   }
-
-  val player1Direction = mouse
-      .map (func1((_: Point).getY.toInt))
-      .map (func1[Int, Direction]((dy: Int) => if (dy < 0) Up else if (dy > 0) Down else Resting))
-      .timestamp
   
-  val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs((_: Timestamped[Direction]), (_: Direction))})
+  val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs((_: Direction), (_: Direction))})
 
   val sampled = inputs 
       .sample (frameRateMillis, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
       .scan (State(Paddle(), Paddle()), func2 { (oldState: State, inputs: Inputs) =>
-        val inputPlayer1 = if (inputs.player1.getTimestampMillis < System.currentTimeMillis - 40L) Resting else inputs.player1.getValue
         State(
-            stepPaddle(frameRateMillis, oldState.player1, inputPlayer1),
+            stepPaddle(frameRateMillis, oldState.player1, inputs.player1),
             stepPaddle(frameRateMillis, oldState.player2, inputs.player2))
       })
 
@@ -99,6 +94,8 @@ object Main extends SimpleSwingApplication {
     state = Some(newState)
     canvas.repaint
   })
+  
+  keys.connect
   
   private def stepPaddle(stepMillis: Long, paddle: Paddle, direction: Direction): Paddle = {
     val step = stepMillis.toDouble / 1000
