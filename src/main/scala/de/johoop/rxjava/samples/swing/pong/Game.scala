@@ -1,6 +1,6 @@
 package de.johoop.rxjava.samples.swing.pong
 
-case class State(player1: Paddle, player2: Paddle)
+case class State(player1: Paddle = Paddle(), player2: Paddle = Paddle())
 
 case class Inputs(player1: Direction, player2: Direction)
 case class Paddle(position: Double = 0.5)
@@ -15,7 +15,7 @@ object Game {
   val paddleHeight = 0.1;
   val paddleWidth = 0.02;
   
-  def step(stepMillis: Long, oldState: State, inputs: Inputs): State = State(
+  def step(stepMillis: Long)(oldState: State, inputs: Inputs): State = State(
       Game stepPaddle (stepMillis, oldState.player1, inputs.player1),
       Game stepPaddle (stepMillis, oldState.player2, inputs.player2))
   

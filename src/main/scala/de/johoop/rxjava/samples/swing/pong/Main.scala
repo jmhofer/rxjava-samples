@@ -26,7 +26,7 @@ import rx.util.Timestamped
 object Main extends SimpleSwingApplication {
   val frameRateMillis = 10L
   
-  private var state: Option[State] = None
+  private var state: Option[State] = None // only required for painting
   
   override def top = new MainFrame {
     title = "Rx Pong"
@@ -66,7 +66,7 @@ object Main extends SimpleSwingApplication {
 
   val sampled = inputs 
       .sample (frameRateMillis, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
-      .scan (State(Paddle(), Paddle()), func2((oldState: State, inputs: Inputs) => Game step (frameRateMillis, oldState, inputs)))
+      .scan (State(), func2(Game step frameRateMillis))
 
   sampled subscribe func1({ newState: State =>
     state = Some(newState)
