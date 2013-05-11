@@ -23,19 +23,8 @@ import rx.operators.OperationCombineLatest
 import java.awt.Point
 import rx.util.Timestamped
 
-case class State(player1: Paddle, player2: Paddle)
-
-case class Inputs(player1: Direction, player2: Direction)
-case class Paddle(position: Double = 0.5)
-case class Ball(position: (Double, Double), velocity: (Double, Double))
-
-sealed trait Direction
-case object Up extends Direction
-case object Down extends Direction
-case object Resting extends Direction
-
 object Main extends SimpleSwingApplication {
-  val frameRateMillis = 40L
+  val frameRateMillis = 10L
   
   private var state: Option[State] = None
   
@@ -58,37 +47,26 @@ object Main extends SimpleSwingApplication {
       state foreach { state => 
         graphics setColor Color.white
         
-        for ((paddle, x) <- Seq((state.player1, x), (state.player2, x + width - 10))) {
-          graphics.fillRect(x, y + (paddle.position * height).toInt - 20, 10, 40)
+        val paddleWidth = (Game.paddleWidth * width).toInt
+        val paddleHeight = (Game.paddleHeight * height).toInt
+        
+        for ((paddle, x) <- Seq((state.player1, x), (state.player2, x + width - paddleWidth))) {
+          graphics.fillRect(x, y + (paddle.position * height).toInt - paddleHeight / 2, paddleWidth, paddleHeight)
         } 
       }
     }
   }
 
   val keys = SwingObservable fromPressedKeys canvas.peer publish
-  val mouse = SwingObservable fromRelativeMouseMotion canvas.peer
   
   val player1Direction = keys map func1 { (keys: JSet[Integer]) => keysToDirection(keys, KeyEvent.VK_W, KeyEvent.VK_S) }
   val player2Direction = keys map func1 { (keys: JSet[Integer]) => keysToDirection(keys, KeyEvent.VK_UP, KeyEvent.VK_DOWN) }
 
-  def keysToDirection(keys: JSet[Integer], upKey: Int, downKey: Int): Direction = {
-    val set: Set[Direction] = (for {
-      key <- keys.asScala if key == upKey || key == downKey
-      direction = if (key == upKey) Up else Down
-    } yield direction)(breakOut)
-    
-    if (set.size == 1) set.head else Resting
-  }
-  
   val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs((_: Direction), (_: Direction))})
 
   val sampled = inputs 
       .sample (frameRateMillis, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
-      .scan (State(Paddle(), Paddle()), func2 { (oldState: State, inputs: Inputs) =>
-        State(
-            stepPaddle(frameRateMillis, oldState.player1, inputs.player1),
-            stepPaddle(frameRateMillis, oldState.player2, inputs.player2))
-      })
+      .scan (State(Paddle(), Paddle()), func2((oldState: State, inputs: Inputs) => Game step (frameRateMillis, oldState, inputs)))
 
   sampled subscribe func1({ newState: State =>
     state = Some(newState)
@@ -96,13 +74,13 @@ object Main extends SimpleSwingApplication {
   })
   
   keys.connect
-  
-  private def stepPaddle(stepMillis: Long, paddle: Paddle, direction: Direction): Paddle = {
-    val step = stepMillis.toDouble / 1000
-    direction match {
-      case Resting => paddle
-      case Up => Paddle(math.max(0.0, paddle.position - step))
-      case Down => Paddle(math.min(1.0, paddle.position + step))
-    }
+
+  private def keysToDirection(keys: JSet[Integer], upKey: Int, downKey: Int): Direction = {
+    val set: Set[Direction] = (for {
+      key <- keys.asScala if key == upKey || key == downKey
+      direction = if (key == upKey) Up else Down
+    } yield direction)(breakOut)
+    
+    if (set.size == 1) set.head else Resting
   }
 }
