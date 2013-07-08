@@ -6,7 +6,6 @@ import scala.swing.SimpleSwingApplication
 import scala.swing.Panel
 import java.awt.Color
 import rx.observables.SwingObservable
-import de.johoop.rxjava.samples.swing.Predef._
 import java.awt.Dimension
 import rx.Observable
 import rx.operators.OperationCombineLatest._
@@ -22,6 +21,7 @@ import java.awt.event.MouseEvent
 import rx.operators.OperationCombineLatest
 import java.awt.Point
 import rx.util.Timestamped
+import rx.lang.scala.RxImplicits._
 
 object Main extends SimpleSwingApplication {
   val frameRateMillis = 10L
@@ -59,19 +59,19 @@ object Main extends SimpleSwingApplication {
 
   val keys = SwingObservable fromPressedKeys canvas.peer publish
   
-  val player1Direction = keys map func1 { (keys: JSet[Integer]) => keysToDirection(keys, KeyEvent.VK_W, KeyEvent.VK_S) }
-  val player2Direction = keys map func1 { (keys: JSet[Integer]) => keysToDirection(keys, KeyEvent.VK_UP, KeyEvent.VK_DOWN) }
+  val player1Direction = keys map { keysToDirection(_: JSet[Integer], KeyEvent.VK_W, KeyEvent.VK_S) }
+  val player2Direction = keys map { keysToDirection(_: JSet[Integer], KeyEvent.VK_UP, KeyEvent.VK_DOWN) }
 
-  val inputs = Observable create OperationCombineLatest.combineLatest(player1Direction, player2Direction, func2 { Inputs((_: Direction), (_: Direction))})
+  val inputs = Observable combineLatest (player1Direction, player2Direction, Inputs)
 
   val sampled = inputs 
       .sample (frameRateMillis, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
-      .scan (State(), func2(Game step frameRateMillis))
+      .scan (State(), (Game step frameRateMillis) _)
 
-  sampled subscribe func1({ newState: State =>
+  sampled subscribe { newState: State =>
     state = Some(newState)
     canvas.repaint
-  })
+  }
   
   keys.connect
 
