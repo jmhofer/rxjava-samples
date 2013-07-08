@@ -15,7 +15,7 @@ object Game {
   val paddleHeight = 0.1;
   val paddleWidth = 0.02;
   
-  def step(stepMillis: Long)(oldState: State, inputs: Inputs): State = State(
+  def step(stepMillis: Long): (State, Inputs) => State = (oldState, inputs) => State(
       Game stepPaddle (stepMillis, oldState.player1, inputs.player1),
       Game stepPaddle (stepMillis, oldState.player2, inputs.player2))
   

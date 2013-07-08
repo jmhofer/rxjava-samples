@@ -66,7 +66,7 @@ object Main extends SimpleSwingApplication {
 
   val sampled = inputs 
       .sample (frameRateMillis, TimeUnit.MILLISECONDS, SwingScheduler.getInstance)
-      .scan (State(), (Game step frameRateMillis) _)
+      .scan (State(), Game step frameRateMillis)
 
   sampled subscribe { newState: State =>
     state = Some(newState)
