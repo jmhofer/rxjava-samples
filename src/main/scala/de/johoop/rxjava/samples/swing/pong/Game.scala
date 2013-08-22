@@ -12,8 +12,8 @@ case object Down extends Direction
 case object Resting extends Direction
 
 object Game {
-  val paddleHeight = 0.1;
-  val paddleWidth = 0.02;
+  val paddleHeight = 0.1
+  val paddleWidth = 0.02
   
   def step(stepMillis: Long): (State, Inputs) => State = (oldState, inputs) => State(
       Game stepPaddle (stepMillis, oldState.player1, inputs.player1),

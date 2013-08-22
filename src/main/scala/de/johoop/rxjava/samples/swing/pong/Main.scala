@@ -6,9 +6,7 @@ import scala.swing.SimpleSwingApplication
 import scala.swing.Panel
 import java.awt.Color
 import rx.observables.SwingObservable
-import java.awt.Dimension
 import rx.Observable
-import rx.operators.OperationCombineLatest._
 import java.util.{ Set => JSet }
 import scala.collection.JavaConverters._
 import java.util.concurrent.TimeUnit
@@ -16,11 +14,6 @@ import rx.concurrency.SwingScheduler
 import java.awt.Graphics2D
 import java.awt.event.KeyEvent
 import scala.collection.breakOut
-import rx.util.functions.Func1
-import java.awt.event.MouseEvent
-import rx.operators.OperationCombineLatest
-import java.awt.Point
-import rx.util.Timestamped
 import rx.lang.scala.RxImplicits._
 
 object Main extends SimpleSwingApplication {
