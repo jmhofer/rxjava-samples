@@ -1,12 +1,12 @@
 rxjava-samples
 ==============
 
-This repo contains a few simple samples for demonstrating *[RxJava](https://github.com/Netflix/RxJava)* using Scala.
+This repo contains a few simple samples for demonstrating the awesomeness that is **[RxJava](https://github.com/Netflix/RxJava)** using Scala.
 
 Build
 -----
 
-This build uses [sbt 0.13](http://scala-sbt.org). Due to extreme bleeding edginess, it currently requires a 
+This build uses **[sbt 0.13](http://scala-sbt.org)**. Due to extreme bleeding edginess, it currently requires a 
 suitable locally published version of RxJava.
 
 License
