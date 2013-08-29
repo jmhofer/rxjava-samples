@@ -52,8 +52,8 @@ object Main extends SimpleSwingApplication {
 
   val keys = SwingObservable fromPressedKeys canvas.peer publish
   
-  val player1Direction = keys map { keysToDirection(_: JSet[Integer], KeyEvent.VK_W, KeyEvent.VK_S) }
-  val player2Direction = keys map { keysToDirection(_: JSet[Integer], KeyEvent.VK_UP, KeyEvent.VK_DOWN) }
+  val player1Direction = keys map { keysToDirection(_: JSet[Integer], upKey = KeyEvent.VK_W, downKey = KeyEvent.VK_S) }
+  val player2Direction = keys map { keysToDirection(_: JSet[Integer], upKey = KeyEvent.VK_UP, downKey = KeyEvent.VK_DOWN) }
 
   val inputs = Observable combineLatest (player1Direction, player2Direction, Inputs)
 
