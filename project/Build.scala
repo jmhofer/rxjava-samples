@@ -19,8 +19,8 @@ object Build extends Build {
 
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-swing" % "2.10.2",
-      "com.netflix.rxjava" % "rxjava-core" % "0.11.0-SNAPSHOT" changing, // mattrjacobs/RxJava, branch static-core, published locally
-      "com.netflix.rxjava" % "rxjava-scala" % "0.11.0-SNAPSHOT" changing() intransitive(),
-      "com.netflix.rxjava" % "rxjava-swing" % "0.11.0-SNAPSHOT" changing() intransitive(),
+      "com.netflix.rxjava" % "rxjava-core" % "0.11.1",
+      "com.netflix.rxjava" % "rxjava-scala" % "0.11.1" intransitive,
+      "com.netflix.rxjava" % "rxjava-swing" % "0.11.1" intransitive,
       "org.slf4j" % "slf4j-simple" % "1.7.4"))
 }
